@@ -13,12 +13,51 @@ interface DateInfo {
   ss: string;
 }
 
+function formaterNormalize(
+  formatter: string | ((dateInfo: DateInfo) => string)
+): (dateInfo: DateInfo) => string {
+  if (typeof formatter === "function") {
+    return formatter;
+  }
+  let matchPattern = formatter;
+  switch (matchPattern) {
+    case "date":
+      matchPattern = "yyyy-MM-dd";
+      break;
+    case "datetime":
+      matchPattern = "yyyy-MM-dd hh:mm:ss";
+      break;
+  }
+
+  return (dateInfo: DateInfo) => {
+    const replaceMap: { [key: string]: string } = {
+      yyyy: dateInfo.yyyy,
+      MM: dateInfo.MM,
+      dd: dateInfo.dd,
+      hh: dateInfo.hh,
+      mm: dateInfo.mm,
+      ss: dateInfo.ss,
+    };
+    for (const key in replaceMap) {
+      matchPattern = matchPattern.replace(key, replaceMap[key]);
+    }
+
+    return matchPattern;
+  };
+}
+
 export function formate(
   date: Date,
   formatter: string | ((dateInfo: DateInfo) => string),
   isPad = false
 ): string {
-  const dateInfo: DateInfo = {
+  const formaterFunction = formaterNormalize(formatter);
+
+  const getPadString = (str: number) => {
+    return isPad ? str.toString().padStart(2, "0") : str.toString();
+  };
+
+  const dateInfo = {
     year: date.getFullYear(),
     month: date.getMonth() + 1,
     day: date.getDate(),
@@ -26,40 +65,12 @@ export function formate(
     minute: date.getMinutes(),
     second: date.getSeconds(),
     yyyy: date.getFullYear().toString(),
-    MM: (date.getMonth() + 1).toString(),
-    dd: date.getDate().toString(),
-    hh: date.getHours().toString(),
-    mm: date.getMinutes().toString(),
-    ss: date.getSeconds().toString(),
+    MM: getPadString(date.getMonth() + 1),
+    dd: getPadString(date.getDate()),
+    hh: getPadString(date.getHours()),
+    mm: getPadString(date.getMinutes()),
+    ss: getPadString(date.getSeconds()),
   };
 
-  if (typeof formatter === "function") {
-    return formatter(dateInfo);
-  }
-
-  let matchPattern = formatter;
-
-  if (formatter === "date") {
-    matchPattern = "yyyy-MM-dd";
-  } else if (formatter === "datetime") {
-    matchPattern = "yyyy-MM-dd hh:mm:ss";
-  }
-
-  const getPadString = (value: string) =>
-    isPad ? value.padStart(2, "0") : value;
-
-  const replaceMap: { [key: string]: string } = {
-    yyyy: dateInfo.yyyy,
-    MM: getPadString(dateInfo.MM),
-    dd: getPadString(dateInfo.dd),
-    hh: getPadString(dateInfo.hh),
-    mm: getPadString(dateInfo.mm),
-    ss: getPadString(dateInfo.ss),
-  };
-
-  for (const key in replaceMap) {
-    matchPattern = matchPattern.replace(key, replaceMap[key]);
-  }
-
-  return matchPattern;
+  return formaterFunction(dateInfo);
 }
